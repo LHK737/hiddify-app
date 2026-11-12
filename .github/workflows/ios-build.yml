@@ -312,13 +312,65 @@ jobs:
         if: steps.detect.outputs.type == 'flutter'
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: ${{ steps.params.outputs.flutter_version || '' }}
+          #flutter-version: ${{ steps.params.outputs.flutter_version || '' }}
+          flutter-version: '3.38.5'
           channel: stable
           cache: true
 
-      - name: Flutter pub get
-        if: steps.detect.outputs.type == 'flutter'
-        run: flutter pub get
+      - name: Prepare iOS Build Environment
+        env:
+          CHANNEL: prod
+        run: make ios-prepare
+
+      - name: Manually Download and Verify HiddifyCore
+        run: |
+          set -e
+          CORE_VERSION=$(grep 'core.version' dependencies.properties | cut -d'=' -f2 | tr -d ' ')
+          echo "Target core version: $CORE_VERSION"
+
+          CORE_URL="https://github.com/hiddify/hiddify-next-core/releases/download/v${CORE_VERSION}/HiddifyCore-ios.tar.gz"
+          echo "Downloading from: $CORE_URL"
+
+          mkdir -p ios/Frameworks
+          curl -fL -o /tmp/core.tar.gz "$CORE_URL"
+          tar -xzf /tmp/core.tar.gz -C ios/Frameworks/
+
+          XCFRAMEWORK_PATH="ios/Frameworks/HiddifyCore.xcframework"
+          if [ ! -d "$XCFRAMEWORK_PATH" ]; then
+            echo "::error::Downloaded archive did not contain HiddifyCore.xcframework."
+            ls -la ios/Frameworks/
+            exit 1
+          fi
+
+          if ! find "$XCFRAMEWORK_PATH" -type f -name "HiddifyCore" | grep -q .; then
+            echo "::error::HiddifyCore.xcframework exists but contains no binary executable named 'HiddifyCore'."
+            echo "Contents of xcframework:"
+            find "$XCFRAMEWORK_PATH" -type f
+            exit 1
+          fi
+          echo "HiddifyCore.xcframework downloaded and verified successfully."
+
+      #- name: Flutter pub get
+      #  if: steps.detect.outputs.type == 'flutter'
+      #  run: flutter pub get
+
+      #- name: Download iOS Core Libraries
+      #  env:
+      #    CHANNEL:
+      #  run: |
+      #    make libs-ios
+          
+      #- name: Verify and Fix iOS Core Library
+      #  run: |
+      #    set -e
+      #    CORE_PATH="ios/Frameworks/HiddifyCore.xcframework"
+      #    if [ ! -d "$CORE_PATH" ] || [ -z "$(find "$CORE_PATH" -type f -name "HiddifyCore" | head -n 1)" ]; then
+      #      echo "::error::HiddifyCore.xcframework is missing. Please, check the command 'make libs-ios'"
+      #      ls -la ios/Frameworks/ || true
+      #      exit 1
+      #    else
+      #      echo "HiddifyCore.xcframework checked"
+      #    fi
 
       # setup-node cannot make `with:` keys conditional, so the version and the
       # version file are both computed here; it ignores an empty version file.
