@@ -328,27 +328,28 @@ jobs:
           CORE_VERSION=$(grep 'core.version' dependencies.properties | cut -d'=' -f2 | tr -d ' ')
           echo "Target core version: $CORE_VERSION"
 
-          CORE_URL="https://github.com/hiddify/hiddify-next-core/releases/download/v${CORE_VERSION}/HiddifyCore-ios.tar.gz"
-          echo "Downloading from: $CORE_URL"
-
+          rm -rf ios/Frameworks/Libcore.xcframework
           mkdir -p ios/Frameworks
+
+          CORE_URL="https://github.com/hiddify/hiddify-core/releases/download/v${CORE_VERSION}/hiddify-lib-ios.tar.gz"
+          echo "Downloading from: $CORE_URL"
           curl -fL -o /tmp/core.tar.gz "$CORE_URL"
           tar -xzf /tmp/core.tar.gz -C ios/Frameworks/
 
-          XCFRAMEWORK_PATH="ios/Frameworks/HiddifyCore.xcframework"
+          XCFRAMEWORK_PATH="ios/Frameworks/Libcore.xcframework"
           if [ ! -d "$XCFRAMEWORK_PATH" ]; then
-            echo "::error::Downloaded archive did not contain HiddifyCore.xcframework."
+            echo "::error::Downloaded archive did not contain Libcore.xcframework."
+            echo "--- Contents of ios/Frameworks ---"
             ls -la ios/Frameworks/
             exit 1
           fi
 
-          if ! find "$XCFRAMEWORK_PATH" -type f -name "HiddifyCore" | grep -q .; then
-            echo "::error::HiddifyCore.xcframework exists but contains no binary executable named 'HiddifyCore'."
-            echo "Contents of xcframework:"
+          if ! find "$XCFRAMEWORK_PATH" -type f -name "Libcore" | grep -q .; then
+            echo "::error::Libcore.xcframework exists but contains no 'Libcore' binary."
             find "$XCFRAMEWORK_PATH" -type f
             exit 1
           fi
-          echo "HiddifyCore.xcframework downloaded and verified successfully."
+          echo "Libcore.xcframework downloaded and verified successfully."
 
       #- name: Flutter pub get
       #  if: steps.detect.outputs.type == 'flutter'
